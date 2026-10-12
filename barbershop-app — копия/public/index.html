@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Barbershop Booking Prototype - SE2625</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 700px; margin: 30px auto; padding: 0 15px; background: #f4f6f9; }
+    h2 { color: #2c3e50; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .form-group { margin-bottom: 12px; display: flex; flex-direction: column; }
+    label { font-weight: bold; margin-bottom: 4px; font-size: 14px; }
+    input, button { padding: 8px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; }
+    button { background-color: #e67e22; color: white; font-weight: bold; cursor: pointer; border: none; margin-top: 10px; }
+    button:hover { background-color: #d35400; }
+    .booking-item { background: white; border-left: 5px solid #27ae60; padding: 12px; margin-bottom: 10px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  </style>
+</head>
+<body>
+
+  <h2>Barbershop Booking Prototype (Part D1)</h2>
+  
+  <!-- ФОРМА WRITE -->
+  <div class="card">
+    <h3>New Appointment Form (Write Operation)</h3>
+    <form id="bookForm">
+      <div class="form-group">
+        <label>Client ID (e.g. 5 to 34):</label>
+        <input type="number" id="clientId" value="5" min="5" max="34" required>
+      </div>
+      <div class="form-group">
+        <label>Barber ID (1 to 10):</label>
+        <input type="number" id="barberId" value="1" min="1" max="10" required>
+      </div>
+      <div class="form-group">
+        <label>Service ID (1 to 12):</label>
+        <input type="number" id="serviceId" value="1" min="1" max="12" required>
+      </div>
+      <div class="form-group">
+        <label>Date:</label>
+        <input type="date" id="appDate" value="2026-11-05" required>
+      </div>
+      <div class="form-group">
+        <label>Start Time:</label>
+        <input type="time" id="appTime" value="15:00" required>
+      </div>
+      <button type="submit">Submit Booking (Write to DB)</button>
+    </form>
+  </div>
+
+  <!-- СПИСОК READ -->
+  <div class="card">
+    <h3>Recent Appointments from PostgreSQL (Read Operation)</h3>
+    <button onclick="loadAppointments()" style="background:#3498db; margin-bottom: 15px;">Refresh List</button>
+    <div id="list">Loading...</div>
+  </div>
+
+  <script>
+    const form = document.getElementById('bookForm');
+    const list = document.getElementById('list');
+
+    // READ: запрос к бэкенду
+    async function loadAppointments() {
+      try {
+        const res = await fetch('/api/appointments');
+        const data = await res.json();
+        list.innerHTML = data.map(app => `
+          <div class="booking-item">
+            <strong>Appointment #${app.appointment_id}</strong> | Client ID: ${app.client_id} | Barber ID: ${app.barber_id} | Service ID: ${app.service_id}<br>
+            <span>Date: ${app.appointment_date.split('T')[0]} at ${app.start_time}</span> | 
+            <span style="color: #27ae60; font-weight: bold;">Status: ${app.status}</span>
+          </div>
+        `).join('');
+      } catch (err) {
+        list.innerText = 'Failed to load appointments from database.';
+      }
+    }
+
+    // WRITE: отправка данных
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        client_id: parseInt(document.getElementById('clientId').value),
+        barber_id: parseInt(document.getElementById('barberId').value),
+        service_id: parseInt(document.getElementById('serviceId').value),
+        appointment_date: document.getElementById('appDate').value,
+        start_time: document.getElementById('appTime').value + ':00',
+        end_time: '16:00:00'
+      };
+
+      try {
+        const res = await fetch('/api/appointments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (result.success) {
+          alert('Success! Appointment #' + result.booking.appointment_id + ' written to database.');
+          loadAppointments(); // обновляем список
+        } else {
+          alert('Error: ' + result.error);
+        }
+      } catch (err) {
+        alert('Server request failed');
+      }
+    });
+
+    loadAppointments();
+  </script>
+</body>
+</html>
